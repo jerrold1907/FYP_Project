@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Stock Advisor</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">📈 AI Stock Advisor</div>
+        <div class="nav-links">
+            <a href="/" class="active">Recommendations</a>
+            <a href="/compare">Compare</a>
+            <a href="/backtest">Backtest</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <header class="page-header">
+            <h1>AI-Powered Stock Advisor</h1>
+            <p class="subtitle">Answer 5 questions and we'll recommend stocks suited to your risk profile</p>
+        </header>
+
+        <!-- Risk Questionnaire -->
+        <section class="card" id="questionnaire-section">
+            <h2>📋 Risk Tolerance Assessment</h2>
+            <p class="section-desc">Answer these scenario-based questions to determine your investor profile.</p>
+
+            <form id="questionnaire-form">
+                {% for q in questions %}
+                <div class="question-block">
+                    <label class="question-label">Q{{ loop.index }}. {{ q.text }}</label>
+                    <div class="options-group">
+                        {% for option_text, option_score in q.options %}
+                        <label class="option-label">
+                            <input type="radio" name="{{ q.id }}" value="{{ option_score }}" required>
+                            <span class="option-text">{{ option_text }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </form>
+
+            <div class="action-center">
+                <button class="btn-primary" onclick="getRecommendations()" id="submit-btn">
+                    🚀 Get My Stock Recommendations
+                </button>
+            </div>
+        </section>
+
+        <!-- Loading -->
+        <div class="loading hidden" id="loading">
+            <div class="spinner"></div>
+            <p>Analysing 20 stocks with our AI model... This may take a moment.</p>
+        </div>
+
+        <!-- Results -->
+        <section class="hidden" id="results-section">
+            <!-- Risk Profile Summary -->
+            <div class="card profile-card">
+                <div class="profile-header">
+                    <div>
+                        <h2 id="result-category">—</h2>
+                        <p class="result-score" id="result-score"></p>
+                    </div>
+                    <div class="profile-desc" id="result-desc"></div>
+                </div>
+            </div>
+
+            <!-- Recommendation Legend -->
+            <div class="legend-box">
+                <div class="legend-title">Signal Guide</div>
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <span class="legend-dot dot-buy"></span>
+                        <strong>Buy</strong> — Stock appears undervalued or shows strong upward momentum
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot dot-hold"></span>
+                        <strong>Hold</strong> — Reasonably valued; worth keeping but not necessarily buying more
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot dot-avoid"></span>
+                        <strong>Avoid</strong> — May no longer fit your profile or has unfavourable outlook
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recommendations Header -->
+            <div class="results-header">
+                <h2 class="section-title">📊 Stock Recommendations</h2>
+                <p class="section-subtitle" id="results-subtitle"></p>
+            </div>
+
+            <!-- Compact Stock Grid -->
+            <div class="stock-grid" id="stock-cards"></div>
+        </section>
+
+        <!-- Detail Modal -->
+        <div class="modal-overlay hidden" id="modal-overlay" onclick="closeModal(event)">
+            <div class="modal" onclick="event.stopPropagation()">
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+                <div class="modal-content" id="modal-content"></div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/app.js"></script>
+    {% include '_chat_widget.html' %}
+</body>
+</html>

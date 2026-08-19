@@ -1,0 +1,29 @@
+[project]
+name = "ai-stock-recommendation"
+version = "0.1.0"
+description = "AI-Powered Stock Recommendation System - University Prototype"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+]
+markers = [
+    "property: Property-based tests using Hypothesis",
+    "unit: Unit tests for specific examples and edge cases",
+    "integration: Integration tests for end-to-end flows",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 70

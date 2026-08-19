@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# AI assistant / agent tool configs
+.kiro/
+.claude/
+
+# Hypothesis testing database
+.hypothesis/
+.pytest_cache/
+
+# Large media (exceeds GitHub's 100MB file limit)
+Video/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Generated reports (regenerate with python docs/generate_final_report.py)
+docs/*.docx
+docs/gantt_chart.png
+
+# Experiment outputs (regenerate by running the scripts)
+experiments/*_results.txt
+experiments/*.csv
+
+# Model artefacts (large binary — regenerate with python retrain_model.py)
+# Uncomment the line below if you DON'T want to include the trained model:
+# models/*.pkl
+
+# Temporary files
+*.tmp
+*.log

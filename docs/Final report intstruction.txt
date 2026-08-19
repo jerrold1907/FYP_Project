@@ -1,0 +1,63 @@
+Instructions
+Overview
+In this staff graded assignment you will submit your final project report.  The report will consist of six chapters:
+
+Introduction: this will explain the project concept and motivation for the project (this can be based on your proposal). This must also state which project template you are using.  (max 1000 words)
+
+Literature review: this is a revised version of the document that you submit for your second peer review. (max 2500 words)
+
+Design: this is a revised version of the document that you submit for your third peer review. (max 2000 words)
+
+Implementation: this should describe the implementation of the project. This should follow the style of the topic 6 peer review (but greatly expanded to cover the entire implementation), describing the major algorithms/techniques used, explanation of the most important parts of the code and a visual representation of the results (e.g. screenshots or graphs). (max 2000  words)
+
+Evaluation: Describe the evaluation carried out (e.g. user studies or testing on data) and give the results. You should also justify your choices in your approach to obtaining and analysing the results. Your evaluation should give a critique of the project as a whole,  highlighting successes, failures, limitations and possible extensions. (max 3 pages)
+
+Conclusion: This can be a short summary of the project as a whole but, it can also bring out any broader themes you would like to discuss, or suggest further work. (max 1000 words)
+
+Total word max: 9500 (NOTE that if you add up all of the above, this comes to more than 9500 words. 9500 words is a strict limit, and each of the section limits are strict, but this approach allows you to exercise some flexibility in the spread of your writing across the different sections, to suit your particular project).
+
+In addition to the limits listed, you can have additional pages of images and references.
+
+You must include a link to your code repository, which needs to be publicly viewable at the time of your submission, and remain viewable until you have received your results.
+
+You can return to the previous peer reviews for instructions on the first four parts of this submission. 
+
+As well as the report you must submit a 3-5 minute video demonstrating your project working. The content of the video will vary depending on your actual project, but it should show all the important features of the project and explain a little of how they work or justify the approaches taken. 
+
+
+Review Criteria
+Your work will be marked according to the following criteria as well as the ones pertaining to your earlier submissions.
+
+Is the report clearly written and presented?
+
+Are the diagrams and images appropriate and clear?
+
+Does the report display knowledge of the area of study, previous work and academic literature?
+
+Does the report critically evaluate the previous work and/or academic literature?
+
+Does the report use proper citation and referencing?
+
+Is the design of the project clear and of high quality?
+
+Is the project concept justified based on the domain and users?
+
+Is the final implementation of high quality?
+
+Is the final implementation technically challenging?
+
+Is the evaluation strategy appropriate to the aims of the project?
+
+Does the evaluation display good coverage of appropriate issues?
+
+Are the results of the evaluation presented well?
+
+Are the evaluation results used to critically analyse the project with respect to the objectives of the project?
+
+Are there appropriate conclusions drawn, and is there appropriate concluding discussion?
+
+Does the project display evidence of originality?
+
+ Is there an appropriate video that demonstrates the working program, the achievements, and the understanding gained?
+
+Is the video well thought through, well structured, and impactful?

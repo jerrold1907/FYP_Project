@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compare Stocks - AI Stock Advisor</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">📈 AI Stock Advisor</div>
+        <div class="nav-links">
+            <a href="/">Recommendations</a>
+            <a href="/compare" class="active">Compare</a>
+            <a href="/backtest">Backtest</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <header class="page-header">
+            <h1>📊 Stock Comparison</h1>
+            <p class="subtitle">Compare stocks side-by-side with overlaid price charts</p>
+        </header>
+
+        <section class="card">
+            <h2>Select Stocks to Compare</h2>
+            <div class="compare-select">
+                <div class="input-group">
+                    <label for="stock1">Stock 1</label>
+                    <select id="stock1">
+                        {% for sector, tickers in sectors.items() %}
+                        <optgroup label="{{ sector }}">
+                            {% for stock in universe if stock.sector == sector %}
+                            <option value="{{ stock.ticker }}"
+                                {% if stock.ticker == 'NVDA' %}selected{% endif %}>
+                                {{ stock.ticker }} — {{ stock.name }}
+                            </option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="stock2">Stock 2</label>
+                    <select id="stock2">
+                        {% for sector, tickers in sectors.items() %}
+                        <optgroup label="{{ sector }}">
+                            {% for stock in universe if stock.sector == sector %}
+                            <option value="{{ stock.ticker }}"
+                                {% if stock.ticker == 'MU' %}selected{% endif %}>
+                                {{ stock.ticker }} — {{ stock.name }}
+                            </option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <p class="section-desc">
+                {{ universe|length }} stocks across {{ sectors|length }} sectors.
+                Comparing across sectors is often more informative than within.
+            </p>
+            <div class="action-center">
+                <button class="btn-primary" onclick="compareStocks()" id="compare-btn">
+                    📊 Compare
+                </button>
+            </div>
+        </section>
+
+        <div class="loading hidden" id="compare-loading">
+            <div class="spinner"></div>
+            <p>Fetching and analysing stock data...</p>
+        </div>
+
+        <!-- Results -->
+        <section class="hidden" id="compare-results">
+            <!-- Chart -->
+            <div class="card">
+                <h2>Price Performance (90 Days, Normalised)</h2>
+                <div style="height: 280px;">
+                    <canvas id="compare-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Comparison Table -->
+            <div class="card">
+                <h2>Side-by-Side Metrics</h2>
+                <div class="table-wrapper">
+                    <table class="data-table" id="compare-table">
+                        <thead></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Verdict -->
+            <div class="card" id="compare-verdict"></div>
+        </section>
+    </main>
+
+    <script>
+        let compareChart = null;
+
+        async function compareStocks() {
+            const t1 = document.getElementById('stock1').value;
+            const t2 = document.getElementById('stock2').value;
+
+            if (t1 === t2) {
+                alert('Please select two different stocks.');
+                return;
+            }
+
+            document.getElementById('compare-btn').disabled = true;
+            document.getElementById('compare-loading').classList.remove('hidden');
+            document.getElementById('compare-results').classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/compare', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tickers: [t1, t2] }),
+                });
+
+                const data = await response.json();
+                if (data.error) { alert(data.error); return; }
+                displayComparison(data.stocks);
+            } catch (err) {
+                alert('Comparison failed: ' + err.message);
+            } finally {
+                document.getElementById('compare-btn').disabled = false;
+                document.getElementById('compare-loading').classList.add('hidden');
+            }
+        }
+
+        function displayComparison(stocks) {
+            document.getElementById('compare-results').classList.remove('hidden');
+
+            // Normalised price chart (both start at 100)
+            const s1 = stocks[0], s2 = stocks[1];
+            const norm1 = s1.prices.map(p => (p / s1.prices[0]) * 100);
+            const norm2 = s2.prices.map(p => (p / s2.prices[0]) * 100);
+            const labels = s1.dates.map((d, i) => i % 10 === 0 ? d.slice(5) : '');
+
+            if (compareChart) compareChart.destroy();
+            compareChart = new Chart(document.getElementById('compare-chart'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: s1.ticker,
+                            data: norm1,
+                            borderColor: '#3b82f6',
+                            backgroundColor: '#3b82f620',
+                            fill: false, tension: 0.3, pointRadius: 0, borderWidth: 2,
+                        },
+                        {
+                            label: s2.ticker,
+                            data: norm2,
+                            borderColor: '#f59e0b',
+                            backgroundColor: '#f59e0b20',
+                            fill: false, tension: 0.3, pointRadius: 0, borderWidth: 2,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                        y: { ticks: { callback: v => v.toFixed(0) + '%' } }
+                    }
+                }
+            });
+
+            // Metrics table
+            const table = document.getElementById('compare-table');
+            const metrics = [
+                ['Company', s1.name, s2.name],
+                ['Sector', s1.sector, s2.sector],
+                ['Price', `$${s1.current_price}`, `$${s2.current_price}`],
+                ['30d Change', `${s1.price_change_30d}%`, `${s2.price_change_30d}%`],
+                ['Signal', s1.signal, s2.signal],
+                ['RSI', s1.rsi, s2.rsi],
+                ['MACD', s1.macd, s2.macd],
+                ['Volatility', `${s1.volatility}%`, `${s2.volatility}%`],
+            ];
+
+            table.querySelector('thead').innerHTML =
+                `<tr><th>Metric</th><th>${s1.ticker}</th><th>${s2.ticker}</th></tr>`;
+            table.querySelector('tbody').innerHTML = metrics.map(row =>
+                `<tr><td><strong>${row[0]}</strong></td><td>${row[1]}</td><td>${row[2]}</td></tr>`
+            ).join('');
+
+            // Verdict
+            const verdict = document.getElementById('compare-verdict');
+            const winner = s1.price_change_30d > s2.price_change_30d ? s1 : s2;
+            const loser = winner === s1 ? s2 : s1;
+            const lowerVol = s1.volatility < s2.volatility ? s1 : s2;
+
+            verdict.innerHTML = `
+                <h2>📋 Quick Verdict</h2>
+                <p><strong>Better momentum:</strong> ${winner.ticker} (${winner.price_change_30d > 0 ? '+' : ''}${winner.price_change_30d}% vs ${loser.price_change_30d > 0 ? '+' : ''}${loser.price_change_30d}%)</p>
+                <p><strong>Lower risk:</strong> ${lowerVol.ticker} (${lowerVol.volatility}% volatility)</p>
+                <p><strong>Signals:</strong> ${s1.ticker} = ${s1.signal}, ${s2.ticker} = ${s2.signal}</p>
+                ${s1.signal === 'Buy' && s2.signal !== 'Buy' ? `<p>✅ <strong>${s1.ticker}</strong> has a stronger outlook (Buy signal).` :
+                  s2.signal === 'Buy' && s1.signal !== 'Buy' ? `<p>✅ <strong>${s2.ticker}</strong> has a stronger outlook (Buy signal).` :
+                  `<p>Both stocks have similar signal strength.</p>`}
+            `;
+
+            document.getElementById('compare-results').scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+    {% include '_chat_widget.html' %}
+</body>
+</html>

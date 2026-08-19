@@ -1,0 +1,43 @@
+{# Floating AI chat widget - include on every page #}
+<div id="chat-widget">
+    <!-- Launcher bubble -->
+    <button id="chat-launcher" onclick="toggleChatWidget()" aria-label="Open AI advisor chat">
+        <span class="launcher-icon">💬</span>
+        <span class="launcher-badge" id="chat-badge">AI</span>
+    </button>
+
+    <!-- Chat panel -->
+    <section id="chat-panel" class="hidden" role="dialog" aria-label="AI advisor chat">
+        <header class="cw-header">
+            <div class="cw-title">
+                <span class="cw-dot" id="cw-status-dot"></span>
+                <div>
+                    <strong>AI Advisor</strong>
+                    <small id="cw-status-text">Ready</small>
+                </div>
+            </div>
+            <div class="cw-actions">
+                <button onclick="clearChatWidget()" title="Clear conversation">⟳</button>
+                <button onclick="toggleChatWidget()" title="Minimise">−</button>
+            </div>
+        </header>
+
+        <div class="cw-messages" id="cw-messages"></div>
+
+        <div class="cw-suggestions" id="cw-suggestions">
+            <button onclick="sendChatWidget('What should I buy?')">What should I buy?</button>
+            <button onclick="sendChatWidget('Compare AAPL and MSFT')">Compare AAPL &amp; MSFT</button>
+            <button onclick="sendChatWidget('Is TSLA risky?')">Is TSLA risky?</button>
+            <button onclick="sendChatWidget('Portfolio overview')">Portfolio overview</button>
+        </div>
+
+        <div class="cw-input">
+            <input type="text" id="cw-input" placeholder="Ask about any stock..."
+                   autocomplete="off"
+                   onkeypress="if(event.key==='Enter')sendChatWidget()">
+            <button onclick="sendChatWidget()" id="cw-send" aria-label="Send message">➤</button>
+        </div>
+    </section>
+</div>
+
+<script src="/static/chat_widget.js"></script>

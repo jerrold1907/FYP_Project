@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backtest Evaluation - AI Stock Advisor</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">📈 AI Stock Advisor</div>
+        <div class="nav-links">
+            <a href="/">Recommendations</a>
+            <a href="/compare">Compare</a>
+            <a href="/backtest" class="active">Backtest</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <header class="page-header">
+            <h1>📊 Walk-Forward Backtest Evaluation</h1>
+            <p class="subtitle">Evaluate how the advisor's recommendations would have performed on historical data</p>
+        </header>
+
+        <section class="card">
+            <h2>How It Works</h2>
+            <div class="info-box">
+                <ol>
+                    <li>Historical stock data is split into rolling train/test windows</li>
+                    <li>A model is trained on each training window (no future data leakage)</li>
+                    <li>Signals (Buy/Hold/Avoid) are generated on the test window</li>
+                    <li>Portfolio performance is simulated following those signals</li>
+                    <li>Results are compared against a buy-and-hold benchmark</li>
+                </ol>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Configuration</h2>
+            <div class="features-grid">
+                <div class="input-group">
+                    <label for="bt-tickers">Tickers (comma-separated)</label>
+                    <input type="text" id="bt-tickers" value="AAPL, MSFT, NVDA">
+                </div>
+                <div class="input-group">
+                    <label for="bt-start">Start Date</label>
+                    <input type="date" id="bt-start" value="2020-01-01">
+                </div>
+                <div class="input-group">
+                    <label for="bt-end">End Date</label>
+                    <input type="date" id="bt-end" value="2024-12-31">
+                </div>
+                <div class="input-group">
+                    <label for="bt-model">Model</label>
+                    <select id="bt-model">
+                        <option value="lr" selected>Logistic Regression</option>
+                        <option value="rf">Random Forest</option>
+                        <option value="dt">Decision Tree</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="bt-train">Training Window (days)</label>
+                    <input type="number" id="bt-train" value="500" min="250" max="750" step="50">
+                </div>
+                <div class="input-group">
+                    <label for="bt-test">Test Window (days)</label>
+                    <input type="number" id="bt-test" value="60" min="20" max="120" step="10">
+                </div>
+            </div>
+
+            <div class="action-center">
+                <button class="btn-primary" onclick="runBacktest()" id="bt-run-btn">
+                    🚀 Run Backtest
+                </button>
+            </div>
+        </section>
+
+        <!-- Loading -->
+        <div class="loading hidden" id="bt-loading">
+            <div class="spinner"></div>
+            <p>Downloading data and running backtest... This may take a minute.</p>
+        </div>
+
+        <!-- Results -->
+        <section class="card hidden" id="bt-results">
+            <h2>📋 Results</h2>
+
+            <!-- Strategy vs Buy & Hold Chart + Aggregate Panel -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 2rem;" id="bt-overview">
+                <div style="position: relative; min-height: 350px;">
+                    <canvas id="bt-equity-chart"></canvas>
+                </div>
+                <div id="bt-aggregate-panel" style="background: #f9fafb; border-radius: 8px; padding: 1.2rem;">
+                    <h3 style="margin-top: 0; font-size: 1rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem;">Aggregate Results</h3>
+                    <table style="width: 100%; font-size: 0.9rem; border-collapse: collapse;" id="bt-agg-table">
+                    </table>
+                </div>
+            </div>
+
+            <!-- Summary Table -->
+            <h3>Per-Stock Summary</h3>
+            <div class="table-wrapper">
+                <table class="data-table" id="bt-summary-table">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- Per-Stock Equity Curves -->
+            <details class="breakdown-details">
+                <summary>📈 Per-Stock Equity Curves</summary>
+                <div id="bt-charts"></div>
+            </details>
+
+            <!-- Detailed Reports -->
+            <details class="breakdown-details">
+                <summary>📄 Detailed Reports</summary>
+                <div id="bt-reports"></div>
+            </details>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/app.js"></script>
+    {% include '_chat_widget.html' %}
+</body>
+</html>
