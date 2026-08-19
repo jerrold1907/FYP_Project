@@ -16,7 +16,8 @@ FYP_Project/
 │   ├── raw/                 # Downloaded stock price data
 │   └── processed/           # Feature-engineered datasets
 ├── notebooks/
-│   └── training.ipynb       # Complete training pipeline notebook
+│   ├── training.ipynb       # Complete training pipeline notebook
+│   └── risk_classification_model.ipynb  # Investor risk classification model training
 ├── models/
 │   ├── stock_model.pkl      # Best performing trained model
 │   └── scaler.pkl           # Fitted StandardScaler for inference
@@ -35,7 +36,16 @@ FYP_Project/
 └── README.md
 ```
 
-## Running the Training Notebook
+## Notebooks
+
+The `notebooks/` folder contains Jupyter notebooks that document the model training process with explanations and visualisations:
+
+| Notebook | Purpose | How to run |
+|----------|---------|-----------|
+| `training.ipynb` | Full ML pipeline — data download, feature engineering, model training, evaluation and comparison | `jupyter notebook notebooks/training.ipynb` |
+| `risk_classification_model.ipynb` | Trains the investor risk classification model that maps profile attributes to risk categories | `jupyter notebook notebooks/risk_classification_model.ipynb` |
+
+> **Note:** The pre-trained model is included in `models/stock_model.pkl`, so you do NOT need to run these notebooks to use the app. They are provided for reproducibility and to demonstrate the training process. If you want to retrain from scratch, you can also run `python retrain_model.py` from the command line.
 
 ### Prerequisites
 
@@ -46,7 +56,7 @@ FYP_Project/
 pip install pandas numpy yfinance scikit-learn matplotlib seaborn jupyter hypothesis pytest
 ```
 
-### Running the Notebook
+### Running Notebooks
 
 1. Navigate to the project root directory:
 
@@ -57,15 +67,13 @@ cd FYP_Project
 2. Launch Jupyter Notebook:
 
 ```bash
-jupyter notebook notebooks/training.ipynb
+pip install jupyter
+jupyter notebook notebooks/
 ```
 
-3. Run all cells in order from top to bottom. The notebook will:
-   - Download historical stock data from yfinance (requires internet connection)
-   - Compute technical indicators (feature engineering)
-   - Train and evaluate three ML models (Logistic Regression, Decision Tree, Random Forest)
-   - Compare model performance and select the best model by weighted F1-score
-   - Export the best model to `models/stock_model.pkl`
+3. Open the desired notebook and run all cells in order from top to bottom.
+   - `training.ipynb` will: download historical stock data from yfinance (requires internet connection), compute technical indicators (feature engineering), train and evaluate three ML models (Logistic Regression, Decision Tree, Random Forest), compare model performance and select the best model by weighted F1-score, and export the best model to `models/stock_model.pkl`.
+   - `risk_classification_model.ipynb` will: build the investor profile dataset, train and evaluate the risk classification model, and export it for use by the Suitability Engine.
 
 ### Running Tests
 
