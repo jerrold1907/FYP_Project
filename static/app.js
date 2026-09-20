@@ -243,7 +243,7 @@ function renderModalChart(stock) {
 
     const labels = stock.dates.map((d, i) => i % 10 === 0 ? d.slice(5) : '');
     const priceColor = stock.prices[stock.prices.length - 1] >= stock.prices[0]
-        ? '#16a34a' : '#dc2626';
+        ? '#10b981' : '#ef4444';
 
     new Chart(ctx, {
         type: 'line',
@@ -265,10 +265,10 @@ function renderModalChart(stock) {
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-                x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#94a3b8' } },
+                x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#9691b8' } },
                 y: {
-                    grid: { color: '#f1f5f9' },
-                    ticks: { font: { size: 10 }, color: '#94a3b8', callback: v => '$' + v.toFixed(0) }
+                    grid: { color: '#ece9f8' },
+                    ticks: { font: { size: 10 }, color: '#9691b8', callback: v => '$' + v.toFixed(0) }
                 }
             }
         }
@@ -339,16 +339,16 @@ function displayBacktestResults(data) {
     const excessReturn = (agg.excess_return_pct || ((agg.total_return_pct||0) - (agg.benchmark_return_pct||0)));
     const sharpeStr = `${(agg.sharpe_ratio||0).toFixed(2)}`;
     const sharpeCIStr = agg.sharpe_ci_lower !== undefined
-        ? `<br><span style="font-size:0.8rem;color:#6b7280;">(95% CI: [${agg.sharpe_ci_lower.toFixed(2)}, ${agg.sharpe_ci_upper.toFixed(2)}])</span>`
+        ? `<br><span style="font-size:0.8rem;color:#8783a8;">(95% CI: [${agg.sharpe_ci_lower.toFixed(2)}, ${agg.sharpe_ci_upper.toFixed(2)}])</span>`
         : '';
 
     aggTable.innerHTML = `
-        <tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:0.5rem 0;">Total Return (Strategy)</td><td style="text-align:right;font-weight:600;color:${(agg.total_return_pct||0)>=0?'#16a34a':'#dc2626'}">${(agg.total_return_pct||0)>=0?'+':''}${(agg.total_return_pct||0).toFixed(1)}%</td></tr>
-        <tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:0.5rem 0;">Total Return (Buy & Hold)</td><td style="text-align:right;font-weight:600;color:${(agg.benchmark_return_pct||0)>=0?'#16a34a':'#dc2626'}">${(agg.benchmark_return_pct||0)>=0?'+':''}${(agg.benchmark_return_pct||0).toFixed(1)}%</td></tr>
-        <tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:0.5rem 0;">Excess Return</td><td style="text-align:right;font-weight:600;color:${excessReturn>=0?'#16a34a':'#dc2626'}">${excessReturn>=0?'+':''}${excessReturn.toFixed(1)}%</td></tr>
-        <tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:0.5rem 0;">Win Rate (pooled)</td><td style="text-align:right;font-weight:600;">${(agg.pooled_win_rate_pct || agg.win_rate_pct||0).toFixed(1)}%</td></tr>
-        <tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:0.5rem 0;">Sharpe Ratio</td><td style="text-align:right;font-weight:600;">${sharpeStr}${sharpeCIStr}</td></tr>
-        <tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:0.5rem 0;">Max Drawdown</td><td style="text-align:right;font-weight:600;color:#dc2626;">${(agg.max_drawdown_pct||0).toFixed(1)}%</td></tr>
+        <tr style="border-bottom:1px solid #e7e5f2;"><td style="padding:0.5rem 0;">Total Return (Strategy)</td><td style="text-align:right;font-weight:600;color:${(agg.total_return_pct||0)>=0?'#10b981':'#ef4444'}">${(agg.total_return_pct||0)>=0?'+':''}${(agg.total_return_pct||0).toFixed(1)}%</td></tr>
+        <tr style="border-bottom:1px solid #e7e5f2;"><td style="padding:0.5rem 0;">Total Return (Buy & Hold)</td><td style="text-align:right;font-weight:600;color:${(agg.benchmark_return_pct||0)>=0?'#10b981':'#ef4444'}">${(agg.benchmark_return_pct||0)>=0?'+':''}${(agg.benchmark_return_pct||0).toFixed(1)}%</td></tr>
+        <tr style="border-bottom:1px solid #e7e5f2;"><td style="padding:0.5rem 0;">Excess Return</td><td style="text-align:right;font-weight:600;color:${excessReturn>=0?'#10b981':'#ef4444'}">${excessReturn>=0?'+':''}${excessReturn.toFixed(1)}%</td></tr>
+        <tr style="border-bottom:1px solid #e7e5f2;"><td style="padding:0.5rem 0;">Win Rate (pooled)</td><td style="text-align:right;font-weight:600;">${(agg.pooled_win_rate_pct || agg.win_rate_pct||0).toFixed(1)}%</td></tr>
+        <tr style="border-bottom:1px solid #e7e5f2;"><td style="padding:0.5rem 0;">Sharpe Ratio</td><td style="text-align:right;font-weight:600;">${sharpeStr}${sharpeCIStr}</td></tr>
+        <tr style="border-bottom:1px solid #e7e5f2;"><td style="padding:0.5rem 0;">Max Drawdown</td><td style="text-align:right;font-weight:600;color:#ef4444;">${(agg.max_drawdown_pct||0).toFixed(1)}%</td></tr>
         <tr><td style="padding:0.5rem 0;">Total Trades</td><td style="text-align:right;font-weight:600;">${(agg.total_trades||0).toLocaleString()}</td></tr>
     `;
 
@@ -369,7 +369,7 @@ function displayBacktestResults(data) {
                 {
                     label: 'Strategy (Net)',
                     data: strategyCurve,
-                    borderColor: '#2563eb',
+                    borderColor: '#4f46e5',
                     backgroundColor: 'rgba(37,99,235,0.05)',
                     borderWidth: 2,
                     pointRadius: 0,
@@ -378,7 +378,7 @@ function displayBacktestResults(data) {
                 {
                     label: 'Buy & Hold',
                     data: benchmarkCurve,
-                    borderColor: '#6b7280',
+                    borderColor: '#8783a8',
                     borderDash: [5, 3],
                     borderWidth: 2,
                     pointRadius: 0,
@@ -446,14 +446,14 @@ function displayBacktestResults(data) {
                     datasets: [{
                         label: `${ticker} Strategy`,
                         data: stockData.equity_curve,
-                        borderColor: '#2563eb',
+                        borderColor: '#4f46e5',
                         borderWidth: 1.5,
                         pointRadius: 0,
                         fill: false,
                     }, {
                         label: `${ticker} Benchmark`,
                         data: stockData.benchmark_curve || [],
-                        borderColor: '#6b7280',
+                        borderColor: '#8783a8',
                         borderDash: [4,2],
                         borderWidth: 1.5,
                         pointRadius: 0,

@@ -72,9 +72,12 @@ def classify_intent(message: str) -> tuple[str, list[str]]:
     if any(w in msg_lower for w in ["compare", " vs ", "versus", "difference between", "which is better"]):
         return "compare", tickers_found
 
-    if any(w in msg_lower for w in ["why", "reason", "explain", "how come"]):
+    if any(w in msg_lower for w in ["why", "reason", "explain", "how come", "based on", "what makes", "how is"]):
         if any(w in msg_lower for w in ["recommend", "suitable", "suggest", "pick"]):
             return "explain_recommendation", tickers_found
+        # Follow-up: "why is X high risk?", "this is based on?", "explain the risk"
+        if tickers_found or any(w in msg_lower for w in ["risk", "risky", "high risk", "low risk", "rating"]):
+            return "explain_risk", tickers_found
 
     if any(w in msg_lower for w in ["risk", "risky", "dangerous", "volatile", "safe"]):
         return "risk_analysis", tickers_found
@@ -152,6 +155,8 @@ def generate_response(
         return _handle_compare(tickers, stock_map, risk_category)
     elif intent == "explain_recommendation":
         return _handle_explain(tickers, stock_map, risk_category)
+    elif intent == "explain_risk":
+        return _handle_explain_risk(tickers, stock_map)
     elif intent == "risk_analysis":
         return _handle_risk(tickers, stock_map)
     elif intent == "stock_info":
@@ -258,6 +263,115 @@ def _handle_explain(tickers: list[str], stock_map: dict,
     lines.append(f"• 30-day price change: {stock['price_change_30d']:+.2f}%")
     lines.append(f"• Volatility: {stock['volatility']:.2f}%")
 
+    return "\n".join(lines)
+
+
+def _handle_explain_risk(tickers: list[str], stock_map: dict) -> str:
+    """Explain in plain language why a stock received its risk rating."""
+    if not tickers:
+        return (
+            "Which stock's risk rating would you like me to explain? "
+            "Try: \"Why is MU high risk?\""
+        )
+
+    ticker = tickers[0]
+    stock = stock_map.get(ticker)
+    name = STOCK_INFO.get(ticker, {}).get("name", ticker)
+
+    if not stock:
+        return (
+            f"I don't have current data for {ticker}. "
+            "Please run the recommendations first so I have live figures to work from."
+        )
+
+    vol = stock["volatility"]
+    rsi = stock["rsi"]
+    change = stock["price_change_30d"]
+    signal = stock["signal"]
+
+    risk_level = "LOW" if vol < 1.5 else "MODERATE" if vol < 3.0 else "HIGH"
+
+    reasons = []
+
+    # Volatility explanation
+    if vol >= 3.0:
+        reasons.append(
+            f"**Volatility ({vol:.2f}%/day)** is the biggest factor — "
+            "the stock moves more than 3% in a typical day, meaning large "
+            "gains or losses can happen very quickly."
+        )
+    elif vol >= 1.5:
+        reasons.append(
+            f"**Volatility ({vol:.2f}%/day)** is moderate — noticeable swings "
+            "but not extreme."
+        )
+    else:
+        reasons.append(
+            f"**Volatility ({vol:.2f}%/day)** is low — the stock price is "
+            "relatively stable day-to-day."
+        )
+
+    # RSI explanation
+    if rsi > 70:
+        reasons.append(
+            f"**RSI ({rsi:.1f})** is in overbought territory, which means the "
+            "stock may have risen faster than fundamentals justify — a pullback "
+            "is more likely."
+        )
+    elif rsi < 30:
+        reasons.append(
+            f"**RSI ({rsi:.1f})** signals the stock is oversold — it has fallen "
+            "sharply and may continue declining or be due a bounce."
+        )
+    else:
+        reasons.append(
+            f"**RSI ({rsi:.1f})** is in the neutral range (30–70), so momentum "
+            "alone doesn't raise a flag."
+        )
+
+    # 30-day trend explanation
+    if change <= -5:
+        reasons.append(
+            f"**30-day price trend ({change:+.2f}%)** is negative — the stock "
+            "has been falling steadily, adding to downside risk."
+        )
+    elif change >= 10:
+        reasons.append(
+            f"**30-day trend ({change:+.2f}%)** is a strong uptrend, but rapid "
+            "gains can also mean a sharper correction if sentiment shifts."
+        )
+    else:
+        reasons.append(
+            f"**30-day trend ({change:+.2f}%)** is relatively flat — no strong "
+            "directional signal from recent price action."
+        )
+
+    # Model signal explanation
+    signal_note = {
+        "Buy":   "The model sees positive momentum and favourable features.",
+        "Hold":  "The model rates it neutral — not compelling enough to buy or avoid.",
+        "Avoid": "The model predicts unfavourable conditions, which contributes to a higher risk rating.",
+    }.get(signal, "")
+    if signal_note:
+        reasons.append(f"**Model signal ({signal}):** {signal_note}")
+
+    lines = [
+        f"**Why is {ticker} ({name}) rated {risk_level} risk?**\n",
+        "Here's what drives that rating:\n",
+    ]
+    lines += [f"{i+1}. {r}" for i, r in enumerate(reasons)]
+    lines.append(
+        f"\nThe overall rating is **{risk_level}** because "
+        + (
+            "the daily volatility alone puts it in the high-risk bucket — "
+            "even if other signals are mixed, that level of price movement "
+            "is significant for most investors."
+            if risk_level == "HIGH"
+            else "the combination of signals above places it in the moderate range."
+            if risk_level == "MODERATE"
+            else "all signals point to a stable, lower-risk profile."
+        )
+    )
     return "\n".join(lines)
 
 
