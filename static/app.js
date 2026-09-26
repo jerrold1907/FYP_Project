@@ -110,6 +110,17 @@ function createCompactCard(stock, idx) {
 }
 
 // === Modal ===
+// Plain-language meaning of each metric, shown under its value. Usability
+// participants could not interpret RSI, MACD or volatility unaided.
+const INDICATOR_HINTS = {
+    price: 'Latest closing price in US dollars.',
+    change: 'How much the price moved over roughly the last month.',
+    rsi: 'Momentum on a 0–100 scale. Above 70: it rose fast and may pull back. Below 30: it fell fast and may rebound.',
+    macd: 'Trend direction. Above 0: prices have been trending up. Below 0: trending down.',
+    volatility: 'Typical size of one day’s price move over the last 20 days. Higher means riskier.',
+    signal: 'The model’s forecast for the next 30 trading days: Buy means a rise of over 10%, Hold 0–10%, Avoid a fall.',
+};
+
 function openModal(idx) {
     const stock = stockData[idx];
     if (!stock) return;
@@ -161,26 +172,32 @@ function openModal(idx) {
                 <div class="modal-metric">
                     <div class="m-label">Price</div>
                     <div class="m-value">$${stock.current_price.toFixed(2)}</div>
+                    <div class="m-hint">${INDICATOR_HINTS.price}</div>
                 </div>
                 <div class="modal-metric">
                     <div class="m-label">30d Change</div>
                     <div class="m-value ${changeClass}">${changeSign}${stock.price_change_30d.toFixed(2)}%</div>
+                    <div class="m-hint">${INDICATOR_HINTS.change}</div>
                 </div>
                 <div class="modal-metric">
                     <div class="m-label">RSI (14d)</div>
                     <div class="m-value">${stock.rsi}</div>
+                    <div class="m-hint">${INDICATOR_HINTS.rsi}</div>
                 </div>
                 <div class="modal-metric">
                     <div class="m-label">MACD</div>
                     <div class="m-value">${stock.macd}</div>
+                    <div class="m-hint">${INDICATOR_HINTS.macd}</div>
                 </div>
                 <div class="modal-metric">
                     <div class="m-label">Volatility</div>
                     <div class="m-value">${stock.volatility}%</div>
+                    <div class="m-hint">${INDICATOR_HINTS.volatility}</div>
                 </div>
                 <div class="modal-metric">
                     <div class="m-label">Signal</div>
                     <div class="m-value">${stock.signal}</div>
+                    <div class="m-hint">${INDICATOR_HINTS.signal}</div>
                 </div>
             </div>
         </div>
@@ -287,6 +304,15 @@ function getSignalIcon(s) {
 }
 
 // === Backtest ===
+// The strategy curve has a point per trading decision but the benchmark has
+// one per test window, so plotting both against the same index squeezed the
+// benchmark into the first few positions. Spreading each curve evenly over the
+// same x-range makes both span the whole backtest period.
+function spreadCurve(curve, span) {
+    const step = curve.length > 1 ? (span - 1) / (curve.length - 1) : 0;
+    return curve.map((y, i) => ({ x: i * step, y }));
+}
+
 async function runBacktest() {
     const btn = document.getElementById('bt-run-btn');
     const loading = document.getElementById('bt-loading');
@@ -338,7 +364,7 @@ function displayBacktestResults(data) {
     const aggTable = document.getElementById('bt-agg-table');
     const excessReturn = (agg.excess_return_pct || ((agg.total_return_pct||0) - (agg.benchmark_return_pct||0)));
     const sharpeStr = `${(agg.sharpe_ratio||0).toFixed(2)}`;
-    const sharpeCIStr = agg.sharpe_ci_lower !== undefined
+    const sharpeCIStr = agg.sharpe_ci_lower != null
         ? `<br><span style="font-size:0.8rem;color:#8783a8;">(95% CI: [${agg.sharpe_ci_lower.toFixed(2)}, ${agg.sharpe_ci_upper.toFixed(2)}])</span>`
         : '';
 
@@ -347,7 +373,7 @@ function displayBacktestResults(data) {
         <tr style="border-bottom:1px solid #e7e5f2;"><td style="padding:0.5rem 0;">Total Return (Buy & Hold)</td><td style="text-align:right;font-weight:600;color:${(agg.benchmark_return_pct||0)>=0?'#10b981':'#ef4444'}">${(agg.benchmark_return_pct||0)>=0?'+':''}${(agg.benchmark_return_pct||0).toFixed(1)}%</td></tr>
         <tr style="border-bottom:1px solid #e7e5f2;"><td style="padding:0.5rem 0;">Excess Return</td><td style="text-align:right;font-weight:600;color:${excessReturn>=0?'#10b981':'#ef4444'}">${excessReturn>=0?'+':''}${excessReturn.toFixed(1)}%</td></tr>
         <tr style="border-bottom:1px solid #e7e5f2;"><td style="padding:0.5rem 0;">Win Rate (pooled)</td><td style="text-align:right;font-weight:600;">${(agg.pooled_win_rate_pct || agg.win_rate_pct||0).toFixed(1)}%</td></tr>
-        <tr style="border-bottom:1px solid #e7e5f2;"><td style="padding:0.5rem 0;">Sharpe Ratio</td><td style="text-align:right;font-weight:600;">${sharpeStr}${sharpeCIStr}</td></tr>
+        <tr style="border-bottom:1px solid #e7e5f2;"><td style="padding:0.5rem 0;">Sharpe Ratio (combined)</td><td style="text-align:right;font-weight:600;">${sharpeStr}${sharpeCIStr}</td></tr>
         <tr style="border-bottom:1px solid #e7e5f2;"><td style="padding:0.5rem 0;">Max Drawdown</td><td style="text-align:right;font-weight:600;color:#ef4444;">${(agg.max_drawdown_pct||0).toFixed(1)}%</td></tr>
         <tr><td style="padding:0.5rem 0;">Total Trades</td><td style="text-align:right;font-weight:600;">${(agg.total_trades||0).toLocaleString()}</td></tr>
     `;
@@ -359,16 +385,14 @@ function displayBacktestResults(data) {
     const strategyCurve = data.combined_strategy_curve || [];
     const benchmarkCurve = data.combined_benchmark_curve || [];
     const maxLen = Math.max(strategyCurve.length, benchmarkCurve.length);
-    const labels = Array.from({length: maxLen}, (_, i) => i);
 
     window._btChart = new Chart(chartCanvas, {
         type: 'line',
         data: {
-            labels: labels,
             datasets: [
                 {
                     label: 'Strategy (Net)',
-                    data: strategyCurve,
+                    data: spreadCurve(strategyCurve, maxLen),
                     borderColor: '#4f46e5',
                     backgroundColor: 'rgba(37,99,235,0.05)',
                     borderWidth: 2,
@@ -377,7 +401,7 @@ function displayBacktestResults(data) {
                 },
                 {
                     label: 'Buy & Hold',
-                    data: benchmarkCurve,
+                    data: spreadCurve(benchmarkCurve, maxLen),
                     borderColor: '#8783a8',
                     borderDash: [5, 3],
                     borderWidth: 2,
@@ -399,7 +423,10 @@ function displayBacktestResults(data) {
             },
             scales: {
                 x: {
+                    type: 'linear',
                     display: true,
+                    min: 0,
+                    max: Math.max(maxLen - 1, 1),
                     title: { display: false },
                     ticks: { maxTicksLimit: 6, display: false }
                 },
@@ -410,7 +437,7 @@ function displayBacktestResults(data) {
                     }
                 }
             },
-            interaction: { intersect: false, mode: 'index' },
+            interaction: { intersect: false, mode: 'nearest', axis: 'x' },
         }
     });
 
@@ -439,20 +466,21 @@ function displayBacktestResults(data) {
             const canvasId = `chart-${ticker}`;
             const el = document.getElementById(canvasId);
             if (!el || !stockData.equity_curve) continue;
+            const span = Math.max(stockData.equity_curve.length,
+                                  (stockData.benchmark_curve || []).length);
             new Chart(el, {
                 type: 'line',
                 data: {
-                    labels: Array.from({length: stockData.equity_curve.length}, (_, i) => i),
                     datasets: [{
                         label: `${ticker} Strategy`,
-                        data: stockData.equity_curve,
+                        data: spreadCurve(stockData.equity_curve, span),
                         borderColor: '#4f46e5',
                         borderWidth: 1.5,
                         pointRadius: 0,
                         fill: false,
                     }, {
                         label: `${ticker} Benchmark`,
-                        data: stockData.benchmark_curve || [],
+                        data: spreadCurve(stockData.benchmark_curve || [], span),
                         borderColor: '#8783a8',
                         borderDash: [4,2],
                         borderWidth: 1.5,
@@ -463,7 +491,7 @@ function displayBacktestResults(data) {
                 options: {
                     responsive: true,
                     plugins: { title: { display: true, text: ticker }, legend: { display: true } },
-                    scales: { x: { display: false }, y: { ticks: { callback: v => '$' + v.toFixed(0) } } }
+                    scales: { x: { type: 'linear', display: false }, y: { ticks: { callback: v => '$' + v.toFixed(0) } } }
                 }
             });
         }

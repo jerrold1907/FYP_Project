@@ -35,6 +35,7 @@ from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeClassifier
 
 from src.evaluation import (
     DEFAULT_LABEL_HORIZON,
@@ -43,6 +44,7 @@ from src.evaluation import (
     scores_to_frame,
 )
 from src.features import compute_features, compute_target_labels
+from src.market_data import load_prices
 from src.stock_universe import TICKERS
 from src.sequence_model import DEFAULT_SEQUENCE_LENGTH, LSTMClassifier
 from src.stationarity import check_feature_frame, summarise
@@ -50,7 +52,10 @@ from src.statistics_tests import mcnemar_test, wilson_interval
 
 FEATURES = ["close_price", "daily_return", "ma_5", "ma_20", "ma_50",
             "volatility", "volume", "RSI", "MACD"]
+CLASS_LABELS = ["Buy", "Hold", "Avoid"]
 SEED = 42
+#: Seeds for the LSTM stability check; the first is the headline run's seed.
+LSTM_STABILITY_SEEDS = (42, 1, 2, 3, 4)
 
 
 def header(text: str) -> None:
@@ -66,15 +71,10 @@ def section(text: str) -> None:
 
 
 def load_pooled_data() -> pd.DataFrame:
-    """Download prices and build the pooled, date-tagged feature dataset."""
-    import yfinance as yf
-
+    """Load prices and build the pooled, date-tagged feature dataset."""
     frames = []
     for ticker in TICKERS:
-        df = yf.download(ticker, start="2020-01-01", end="2024-12-31",
-                         progress=False)
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
+        df = load_prices(ticker)
         if len(df) < 200:
             continue
         feats = compute_features(df)
@@ -170,16 +170,20 @@ def part2_lstm(data: pd.DataFrame):
     print("the comparison is like-for-like.\n")
 
     comparison = {"LSTM": lstm_predictions}
+    fit_seconds = {"LSTM": elapsed}
     others = {
         "LogisticRegression": LogisticRegression(max_iter=1000, random_state=SEED),
         "RandomForest": RandomForestClassifier(n_estimators=100,
                                                random_state=SEED, n_jobs=-1),
+        "DecisionTree": DecisionTreeClassifier(random_state=SEED),
         "Baseline-Majority": DummyClassifier(strategy="most_frequent"),
         "Baseline-Random": DummyClassifier(strategy="stratified",
                                            random_state=SEED),
     }
     for name, model in others.items():
+        start = time.time()
         model.fit(X_train, y_train)
+        fit_seconds[name] = time.time() - start
         comparison[name] = model.predict(X_test[row_index])
 
     scores = [score_predictions(y_test_aligned, preds, name)
@@ -198,6 +202,66 @@ def part2_lstm(data: pd.DataFrame):
         result = mcnemar_test(y_test_aligned, lstm_predictions,
                               comparison[name], "LSTM", name)
         print(f"  {result}\n")
+    for a, b in [("LogisticRegression", "RandomForest"),
+                 ("LogisticRegression", "DecisionTree"),
+                 ("LogisticRegression", "Baseline-Majority"),
+                 ("LogisticRegression", "Baseline-Random"),
+                 ("RandomForest", "Baseline-Random")]:
+        result = mcnemar_test(y_test_aligned, comparison[a], comparison[b], a, b)
+        print(f"  {result}\n")
+
+    section("Per-class recall and precision on the comparable subset")
+    print("Accuracy alone hides which classes a model can find. Buy recall is")
+    print("the share of genuine Buy rows the model labels Buy.\n")
+    print(f"{'Model':20}" + "".join(f"{c + ' rec':>11}{c + ' prec':>12}"
+                                    for c in CLASS_LABELS))
+    for name, preds in comparison.items():
+        cells = ""
+        for label in CLASS_LABELS:
+            actual = y_test_aligned == label
+            chosen = preds == label
+            recall = (chosen & actual).sum() / actual.sum() if actual.any() else 0
+            precision = ((chosen & actual).sum() / chosen.sum()
+                         if chosen.any() else 0)
+            cells += f"{recall:>11.3f}{precision:>12.3f}"
+        print(f"{name:20}{cells}")
+
+    section("Fit time on the full training set (seconds, CPU)")
+    for name, seconds in fit_seconds.items():
+        print(f"  {name:20} {seconds:8.2f}")
+
+    section("LSTM stability across random seeds")
+    print("Logistic regression is a convex problem, so it returns the same")
+    print("model on every run. The LSTM depends on its random initialisation")
+    print("and on where early stopping halts, so its advantage is only")
+    print("meaningful if it survives a change of seed.\n")
+    seed_rows = []
+    for seed in LSTM_STABILITY_SEEDS:
+        model = LSTMClassifier(sequence_length=DEFAULT_SEQUENCE_LENGTH,
+                               hidden_size=48, random_state=seed)
+        model.fit(X_train, y_train, groups=train["ticker"].to_numpy(),
+                  verbose=False)
+        preds, index = model.predict_with_index(
+            X_test, groups=test["ticker"].to_numpy())
+        truth = y_test[index]
+        seed_scores = score_predictions(truth, preds, f"LSTM seed {seed}")
+        buy = truth == "Buy"
+        seed_rows.append({
+            "seed": seed,
+            "accuracy": seed_scores.accuracy,
+            "f1_macro": seed_scores.f1_macro,
+            "buy_recall": float((preds[buy] == "Buy").mean()),
+            "best_epoch": model.history.best_epoch + 1,
+        })
+        print(f"  seed {seed:3d}: acc={seed_scores.accuracy:.4f}  "
+              f"F1(macro)={seed_scores.f1_macro:.4f}  "
+              f"Buy recall={seed_rows[-1]['buy_recall']:.3f}  "
+              f"best epoch={seed_rows[-1]['best_epoch']}")
+    seeds = pd.DataFrame(seed_rows)
+    print(f"\n  accuracy : mean {seeds['accuracy'].mean():.4f}, "
+          f"range [{seeds['accuracy'].min():.4f}, {seeds['accuracy'].max():.4f}]")
+    print(f"  F1(macro): mean {seeds['f1_macro'].mean():.4f}, "
+          f"range [{seeds['f1_macro'].min():.4f}, {seeds['f1_macro'].max():.4f}]")
 
     return scores, comparison, y_test_aligned
 
@@ -235,13 +299,15 @@ def part3_conclusion(scores) -> None:
         print("     therefore the feature set and the intrinsic difficulty of")
         print("     30-day return prediction, not the classifier's capacity.")
     elif lstm and lr and lstm.f1_weighted > lr.f1_weighted:
-        print("  2. The LSTM outperforms logistic regression, indicating that")
-        print("     temporal structure carries information the row-wise models")
-        print("     cannot access. This supports adopting a sequence model.")
+        print("  2. The LSTM outperforms logistic regression on weighted F1,")
+        print("     suggesting temporal structure carries some information the")
+        print("     row-wise models cannot access. Whether that justifies")
+        print("     deploying it depends on accuracy, stability across seeds and")
+        print("     interpretability as well (see the seed check above).")
 
     print("  3. Several features are non-stationary (Part 1), which violates an")
-    print("     assumption both scikit-learn models rely on and explains the")
-    print("     regime-dependent accuracy measured in exp03.")
+    print("     assumption both scikit-learn models rely on and likely")
+    print("     contributes to the regime-dependent accuracy measured in exp03.")
     print("\n  Taken together these justify the final model choice on measured")
     print("  grounds rather than on convention.")
 

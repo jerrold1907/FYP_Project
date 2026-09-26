@@ -44,6 +44,10 @@ docs/gantt_chart.png
 experiments/*_results.txt
 experiments/*.csv
 
+# Price snapshots written by src/market_data.py (Yahoo Finance data; not
+# redistributed - delete and re-run an experiment to take a fresh snapshot)
+data/raw/*.csv
+
 # Model artefacts (large binary — regenerate with python retrain_model.py)
 # Uncomment the line below if you DON'T want to include the trained model:
 # models/*.pkl

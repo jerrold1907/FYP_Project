@@ -22,6 +22,8 @@
     </nav>
 
     <main class="container">
+        {% include '_disclaimer.html' %}
+
         <header class="page-header">
             <h1>AI-Powered Stock Advisor</h1>
             <p class="subtitle">Answer 5 questions and we'll recommend stocks suited to your risk profile</p>
@@ -80,15 +82,15 @@
                 <div class="legend-items">
                     <div class="legend-item">
                         <span class="legend-dot dot-buy"></span>
-                        <strong>Buy</strong> — Stock appears undervalued or shows strong upward momentum
+                        <strong>Buy</strong> — the model expects a rise of more than 10% over the next 30 trading days
                     </div>
                     <div class="legend-item">
                         <span class="legend-dot dot-hold"></span>
-                        <strong>Hold</strong> — Reasonably valued; worth keeping but not necessarily buying more
+                        <strong>Hold</strong> — the model expects a change between 0% and +10%
                     </div>
                     <div class="legend-item">
                         <span class="legend-dot dot-avoid"></span>
-                        <strong>Avoid</strong> — May no longer fit your profile or has unfavourable outlook
+                        <strong>Avoid</strong> — the model expects the price to fall
                     </div>
                 </div>
             </div>

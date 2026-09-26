@@ -47,6 +47,16 @@ class BacktestConfig:
             the training split was corrected for temporal leakage
             (see experiments/exp02_results.txt).
         transaction_cost_pct: Cost per trade as a fraction (e.g., 0.001 = 0.1%).
+        hold_cost_model: How costs are charged on the half-size position a
+            Hold signal takes. "on_change" (the default) charges entry only
+            when the half position is opened and exit only when it is closed,
+            which is how a real position incurs costs. "per_day" reproduces
+            the original behaviour, which treated every Hold day as a separate
+            round trip and so charged a run of consecutive Hold days entry and
+            exit costs every day; it overstated costs and is kept only so the
+            figures in the first report draft can be reproduced.
+        buy_threshold: Forward 30-day return above which a row is labelled
+            Buy when training each window (see compute_target_labels).
     """
     train_window_days: int = 500
     test_window_days: int = 60
@@ -54,11 +64,20 @@ class BacktestConfig:
     initial_capital: float = 10000.0
     model_type: str = "lr"
     transaction_cost_pct: float = 0.001
+    hold_cost_model: str = "on_change"
+    buy_threshold: float = 0.10
 
 
 @dataclass
 class TradeRecord:
-    """Record of a single trade executed during backtesting."""
+    """Record of a single trade executed during backtesting.
+
+    random_entry_win_prob is the share of random entries in the same test
+    window, held for the same number of days and charged the same costs, that
+    would have been profitable. In a rising market most long positions make
+    money, so 50% is too low a bar for "better than chance"; summing this
+    field over trades gives the number of wins chance alone would produce.
+    """
     date: str
     ticker: str
     signal: str
@@ -66,6 +85,27 @@ class TradeRecord:
     exit_price: float
     return_pct: float
     holding_days: int
+    random_entry_win_prob: float = float("nan")
+
+
+def random_entry_win_probability(prices: pd.Series, holding_days: int,
+                                 round_trip_cost: float) -> float:
+    """Share of entries in `prices` that profit over `holding_days` after costs.
+
+    Args:
+        prices: Closing prices of one test window, in date order.
+        holding_days: Days each position is held.
+        round_trip_cost: Entry plus exit cost as a fraction of price.
+
+    Returns:
+        Fraction of possible entry days whose position would have ended in
+        profit. A zero-day holding can only lose its costs, so it returns 0.
+    """
+    values = np.asarray(prices, dtype=float)
+    if holding_days <= 0 or holding_days >= len(values):
+        return 0.0
+    returns = (values[holding_days:] - values[:-holding_days]) / values[:-holding_days]
+    return float(((returns - round_trip_cost) > 0).mean())
 
 
 @dataclass
@@ -148,6 +188,9 @@ def run_backtest(
     """
     if config is None:
         config = BacktestConfig()
+    if config.hold_cost_model not in ("per_day", "on_change"):
+        raise ValueError(
+            f"Unknown hold_cost_model: {config.hold_cost_model}")
 
     # Handle MultiIndex columns from yfinance
     if isinstance(stock_data.columns, pd.MultiIndex):
@@ -156,7 +199,8 @@ def run_backtest(
 
     # Compute features for the full dataset
     features_df = compute_features(stock_data)
-    labels_df = compute_target_labels(stock_data)
+    labels_df = compute_target_labels(
+        stock_data, buy_threshold=config.buy_threshold)
 
     # Align features and labels on common index
     common_idx = features_df.index.intersection(labels_df.index)
@@ -224,6 +268,7 @@ def run_backtest(
         window_wins = 0
 
         i = 0
+        holding_half = False  # a Hold half position is open (on_change only)
         while i < len(predictions):
             signal = predictions[i]
             entry_price = test_prices.iloc[i]
@@ -247,6 +292,9 @@ def run_backtest(
                     exit_price=exit_price,
                     return_pct=trade_return * 100,
                     holding_days=exit_idx - i,
+                    random_entry_win_prob=random_entry_win_probability(
+                        test_prices, exit_idx - i,
+                        config.transaction_cost_pct * 2),
                 )
                 all_trades.append(trade)
                 window_trades += 1
@@ -262,7 +310,18 @@ def run_backtest(
                 if i + 1 < len(test_prices):
                     next_price = test_prices.iloc[i + 1]
                     trade_return = (next_price - entry_price) / entry_price
-                    trade_return -= config.transaction_cost_pct * 2
+                    if config.hold_cost_model == "per_day":
+                        trade_return -= config.transaction_cost_pct * 2
+                    else:
+                        # The half position stays open into tomorrow only if
+                        # tomorrow is also Hold and can itself earn a return.
+                        stays_open = (i + 2 < len(test_prices)
+                                      and predictions[i + 1] == "Hold")
+                        if not holding_half:
+                            trade_return -= config.transaction_cost_pct
+                        if not stays_open:
+                            trade_return -= config.transaction_cost_pct
+                        holding_half = stays_open
                     equity *= (1 + trade_return * 0.5)  # half position
                     window_return += trade_return * 0.5
                 i += 1

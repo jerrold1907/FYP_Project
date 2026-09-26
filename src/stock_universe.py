@@ -104,6 +104,126 @@ UNIVERSE: tuple[Stock, ...] = (
 #: Ticker symbols in universe order. Used by training and experiment scripts.
 TICKERS: list[str] = [stock.ticker for stock in UNIVERSE]
 
+#: Extended universe for experiments/exp07_universe_scaling.py, which tests
+#: whether the results obtained on the 20 stocks above hold at five times the
+#: size. It is the 100 companies of the S&P 100 index as listed on
+#: 21 September 2026, as (Yahoo ticker, company, GICS sector). Alphabet's
+#: second share class (GOOG) is left out so no company appears twice, and
+#: Berkshire Hathaway uses Yahoo's BRK-B spelling. Every stock in UNIVERSE is
+#: also in this list.
+#:
+#: The list carries survivorship bias: it holds the companies that are in the
+#: index today, so firms that shrank, were acquired or delisted during
+#: 2020-2024 are missing, and firms that joined because their shares rose are
+#: included. That inflates buy-and-hold benchmark returns. A point-in-time
+#: constituent list would avoid this, but free data sources do not keep price
+#: histories for delisted stocks.
+SP100: tuple[tuple[str, str, str], ...] = (
+    ("AAPL", "Apple", "Information Technology"),
+    ("ACN", "Accenture", "Information Technology"),
+    ("ADBE", "Adobe", "Information Technology"),
+    ("AMAT", "Applied Materials", "Information Technology"),
+    ("AMD", "Advanced Micro Devices", "Information Technology"),
+    ("ANET", "Arista Networks", "Information Technology"),
+    ("AVGO", "Broadcom", "Information Technology"),
+    ("CRM", "Salesforce", "Information Technology"),
+    ("CSCO", "Cisco", "Information Technology"),
+    ("DELL", "Dell Technologies", "Information Technology"),
+    ("IBM", "IBM", "Information Technology"),
+    ("INTC", "Intel", "Information Technology"),
+    ("INTU", "Intuit", "Information Technology"),
+    ("LRCX", "Lam Research", "Information Technology"),
+    ("MSFT", "Microsoft", "Information Technology"),
+    ("MU", "Micron Technology", "Information Technology"),
+    ("NOW", "ServiceNow", "Information Technology"),
+    ("NVDA", "Nvidia", "Information Technology"),
+    ("ORCL", "Oracle", "Information Technology"),
+    ("PANW", "Palo Alto Networks", "Information Technology"),
+    ("PLTR", "Palantir Technologies", "Information Technology"),
+    ("QCOM", "Qualcomm", "Information Technology"),
+    ("SNDK", "Sandisk", "Information Technology"),
+    ("TXN", "Texas Instruments", "Information Technology"),
+    ("ABBV", "AbbVie", "Health Care"),
+    ("ABT", "Abbott Laboratories", "Health Care"),
+    ("AMGN", "Amgen", "Health Care"),
+    ("BMY", "Bristol Myers Squibb", "Health Care"),
+    ("CVS", "CVS Health", "Health Care"),
+    ("DHR", "Danaher", "Health Care"),
+    ("GILD", "Gilead Sciences", "Health Care"),
+    ("ISRG", "Intuitive Surgical", "Health Care"),
+    ("JNJ", "Johnson & Johnson", "Health Care"),
+    ("LLY", "Eli Lilly", "Health Care"),
+    ("MDT", "Medtronic", "Health Care"),
+    ("MRK", "Merck & Co.", "Health Care"),
+    ("PFE", "Pfizer", "Health Care"),
+    ("TMO", "Thermo Fisher Scientific", "Health Care"),
+    ("UNH", "UnitedHealth Group", "Health Care"),
+    ("AXP", "American Express", "Financials"),
+    ("BAC", "Bank of America", "Financials"),
+    ("BLK", "BlackRock", "Financials"),
+    ("BNY", "BNY Mellon", "Financials"),
+    ("BRK-B", "Berkshire Hathaway", "Financials"),
+    ("C", "Citigroup", "Financials"),
+    ("COF", "Capital One", "Financials"),
+    ("GS", "Goldman Sachs", "Financials"),
+    ("JPM", "JPMorgan Chase", "Financials"),
+    ("MA", "Mastercard", "Financials"),
+    ("MS", "Morgan Stanley", "Financials"),
+    ("SCHW", "Charles Schwab", "Financials"),
+    ("USB", "U.S. Bancorp", "Financials"),
+    ("V", "Visa", "Financials"),
+    ("WFC", "Wells Fargo", "Financials"),
+    ("BA", "Boeing", "Industrials"),
+    ("CAT", "Caterpillar", "Industrials"),
+    ("DE", "Deere & Company", "Industrials"),
+    ("EMR", "Emerson Electric", "Industrials"),
+    ("FDX", "FedEx", "Industrials"),
+    ("GD", "General Dynamics", "Industrials"),
+    ("GE", "GE Aerospace", "Industrials"),
+    ("GEV", "GE Vernova", "Industrials"),
+    ("LMT", "Lockheed Martin", "Industrials"),
+    ("MMM", "3M", "Industrials"),
+    ("RTX", "RTX Corporation", "Industrials"),
+    ("UBER", "Uber", "Industrials"),
+    ("UNP", "Union Pacific", "Industrials"),
+    ("UPS", "United Parcel Service", "Industrials"),
+    ("AMZN", "Amazon", "Consumer Discretionary"),
+    ("BKNG", "Booking Holdings", "Consumer Discretionary"),
+    ("GM", "General Motors", "Consumer Discretionary"),
+    ("HD", "Home Depot", "Consumer Discretionary"),
+    ("LOW", "Lowe's", "Consumer Discretionary"),
+    ("MCD", "McDonald's", "Consumer Discretionary"),
+    ("SBUX", "Starbucks", "Consumer Discretionary"),
+    ("TSLA", "Tesla", "Consumer Discretionary"),
+    ("CMCSA", "Comcast", "Communication Services"),
+    ("DIS", "Walt Disney", "Communication Services"),
+    ("GOOGL", "Alphabet", "Communication Services"),
+    ("META", "Meta Platforms", "Communication Services"),
+    ("NFLX", "Netflix", "Communication Services"),
+    ("T", "AT&T", "Communication Services"),
+    ("TMUS", "T-Mobile US", "Communication Services"),
+    ("VZ", "Verizon", "Communication Services"),
+    ("COST", "Costco", "Consumer Staples"),
+    ("KO", "Coca-Cola", "Consumer Staples"),
+    ("MDLZ", "Mondelez International", "Consumer Staples"),
+    ("MO", "Altria", "Consumer Staples"),
+    ("PEP", "PepsiCo", "Consumer Staples"),
+    ("PG", "Procter & Gamble", "Consumer Staples"),
+    ("PM", "Philip Morris International", "Consumer Staples"),
+    ("WMT", "Walmart", "Consumer Staples"),
+    ("COP", "ConocoPhillips", "Energy"),
+    ("CVX", "Chevron", "Energy"),
+    ("XOM", "ExxonMobil", "Energy"),
+    ("DUK", "Duke Energy", "Utilities"),
+    ("NEE", "NextEra Energy", "Utilities"),
+    ("SO", "Southern Company", "Utilities"),
+    ("AMT", "American Tower", "Real Estate"),
+    ("LIN", "Linde", "Materials"),
+)
+
+#: Ticker symbols of the extended universe, in the order listed above.
+SP100_TICKERS: list[str] = [ticker for ticker, _, _ in SP100]
+
 #: Ticker to display name, used by the recommendation endpoint.
 STOCK_NAMES: dict[str, str] = {s.ticker: s.name for s in UNIVERSE}
 

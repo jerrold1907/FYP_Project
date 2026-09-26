@@ -41,8 +41,10 @@ from src.evaluation import (
     score_predictions,
 )
 from src.features import compute_features, compute_target_labels
+from src.market_data import load_prices
 from src.stock_universe import TICKERS
 from src.statistics_tests import (
+    chance_matched_test,
     kruskal_wallis,
     mcnemar_test,
     mean_return_test,
@@ -85,13 +87,12 @@ END_DATE = "2024-12-31"
 
 
 def fetch_prices(ticker: str) -> pd.DataFrame:
-    """Download one ticker's daily prices with flattened columns.
+    """Load one ticker's daily prices with flattened columns.
 
-    Every download in this script goes through here so that the classifier
-    analysis and the backtest cannot silently disagree about the data. In
-    particular auto_adjust is pinned rather than left to the yfinance default,
-    which has changed between releases and would otherwise make results
-    irreproducible across environments.
+    Every load in this script goes through here so that the classifier
+    analysis and the backtest cannot silently disagree about the data. Prices
+    come from the shared snapshot (src/market_data.py), so this script and the
+    other experiments see identical adjusted prices.
 
     Args:
         ticker: Exchange symbol.
@@ -99,13 +100,7 @@ def fetch_prices(ticker: str) -> pd.DataFrame:
     Returns:
         DataFrame of daily OHLCV data with single-level column names.
     """
-    import yfinance as yf
-
-    df = yf.download(ticker, start=START_DATE, end=END_DATE,
-                     auto_adjust=True, progress=False)
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
-    return df
+    return load_prices(ticker, START_DATE, END_DATE)
 
 
 def load_pooled_data() -> pd.DataFrame:
@@ -214,9 +209,10 @@ def analyse_backtest() -> None:
 
     section("Per-ticker results with win-rate confidence intervals")
     print("A ticker with zero trades is reported, not dropped: it means the")
-    print("model never issued a Buy signal, so the strategy held cash. Those")
-    print("rows carry no win rate but they do carry a return, and excluding")
-    print("them would flatter the strategy.\n")
+    print("model never issued a Buy signal, so the strategy never took a full")
+    print("position (its Hold signals still took half positions). Those rows")
+    print("carry no win rate but they do carry a return, and excluding them")
+    print("would flatter the strategy.\n")
     print(f"{'Ticker':8}{'Trades':>7}{'Wins':>6}{'WinRate':>9}"
           f"{'95% CI':>20}{'Strategy%':>11}{'Bench%':>9}")
     rows = []
@@ -271,6 +267,18 @@ def analyse_backtest() -> None:
     print("  the quality of the signals acted upon, not the profitability of")
     print("  the strategy as a whole, which the return comparison addresses.")
 
+    section("Win rate against a chance-matched baseline")
+    print("50% is the wrong bar in a rising market, where most long positions")
+    print("make money. Each trade is compared instead with random entries in")
+    print("the same test window, held for the same number of days and charged")
+    print("the same costs.\n")
+    all_trades = [t for result in per_ticker.values() for t in result.trades]
+    chances = [t.random_entry_win_prob for t in all_trades]
+    holding = np.array([t.holding_days for t in all_trades])
+    print(f"  Holding period: median {np.median(holding):.0f} days, "
+          f"mean {holding.mean():.1f} days")
+    print(f"  {chance_matched_test(total_wins, chances)}")
+
     section("Single-ticker illustration: AAPL (the figure quoted in the report)")
     if "AAPL" in per_ticker:
         aapl = per_ticker["AAPL"]
@@ -293,20 +301,32 @@ def analyse_backtest() -> None:
     print("  paired against that ticker's own buy-and-hold return, so it is")
     print("  not confounded by which stocks happened to rise.")
 
-    section("Sharpe ratio interval estimates")
-    for ticker in list(per_ticker)[:5]:
-        curve = per_ticker[ticker].equity_curve
-        if len(curve) < 10:
-            continue
-        returns = pd.Series(curve).pct_change().dropna().to_numpy()
+    section("Sharpe ratio interval estimates (every backtested ticker)")
+    # Every ticker is reported. An earlier version printed only the first five,
+    # which left the Sharpe claim resting on a quarter of the universe.
+    frame["sharpe_ci_lower"] = np.nan
+    frame["sharpe_ci_upper"] = np.nan
+    counts = {"excludes 0": 0, "includes 0": 0, "undefined": 0}
+    for ticker, result in per_ticker.items():
+        returns = pd.Series(result.equity_curve).pct_change().dropna().to_numpy()
         try:
             ci = sharpe_ratio_interval(returns)
-            excl = "excludes 0" if ci.excludes(0.0) else "includes 0"
-            print(f"  {ticker:8} Sharpe={ci.estimate:+.3f} "
-                  f"[{ci.lower:+.3f}, {ci.upper:+.3f}]  ({excl})")
         except ValueError as exc:
-            print(f"  {ticker:8} skipped: {exc}")
-    print("\n  Intervals that include zero mean the risk-adjusted return is")
+            # A flat equity curve (no exposure at all) has no defined Sharpe
+            # ratio; it is counted and shown rather than dropped.
+            counts["undefined"] += 1
+            print(f"  {ticker:8} undefined: {exc}")
+            continue
+        excl = "excludes 0" if ci.excludes(0.0) else "includes 0"
+        counts[excl] += 1
+        frame.loc[frame["ticker"] == ticker, "sharpe_ci_lower"] = ci.lower
+        frame.loc[frame["ticker"] == ticker, "sharpe_ci_upper"] = ci.upper
+        print(f"  {ticker:8} Sharpe={ci.estimate:+.3f} "
+              f"[{ci.lower:+.3f}, {ci.upper:+.3f}]  ({excl})")
+    print(f"\n  {counts['includes 0']} of {len(per_ticker)} intervals include "
+          f"zero, {counts['excludes 0']} exclude it, "
+          f"{counts['undefined']} undefined.")
+    print("  Intervals that include zero mean the risk-adjusted return is")
     print("  not distinguishable from no skill at all.")
 
     return frame, per_ticker

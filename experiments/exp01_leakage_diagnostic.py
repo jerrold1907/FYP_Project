@@ -28,14 +28,12 @@ FEATURES = ["close_price", "daily_return", "ma_5", "ma_20", "ma_50",
             "volatility", "volume", "RSI", "MACD"]
 LABEL_HORIZON = 30  # forward-return window used to build targets
 
-import yfinance as yf
+from src.market_data import load_prices
 
-print("Downloading data...")
+print("Loading data...")
 frames = []
 for t in TICKERS:
-    df = yf.download(t, start="2020-01-01", end="2024-12-31", progress=False)
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
+    df = load_prices(t)
     if len(df) < 200:
         continue
     f = compute_features(df)

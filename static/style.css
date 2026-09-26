@@ -239,6 +239,26 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; }
 .result-score { color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem; font-weight: 600; }
 .profile-desc { color: var(--text-muted); font-size: 0.85rem; max-width: 480px; line-height: 1.55; }
 
+/* === Disclaimer === */
+.disclaimer {
+    display: flex;
+    gap: 0.7rem;
+    align-items: flex-start;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    border-radius: var(--radius-sm);
+    padding: 0.8rem 1.05rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.84rem;
+    line-height: 1.5;
+    color: var(--text);
+}
+.disclaimer strong { color: var(--warning-dark); }
+.disclaimer-icon { font-size: 1.05rem; line-height: 1.35; flex-shrink: 0; }
+@media (prefers-color-scheme: dark) {
+    .disclaimer strong { color: var(--warning); }
+}
+
 /* === Legend === */
 .legend-box {
     background: var(--card-bg);
@@ -399,6 +419,7 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; }
 .modal-metric .m-value { font-size: 1.1rem; font-weight: 700; margin-top: 0.2rem; }
 .modal-metric .m-value.positive { color: var(--success-dark); }
 .modal-metric .m-value.negative { color: var(--danger-dark); }
+.modal-metric .m-hint { font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; margin-top: 0.35rem; }
 
 .modal-explanation {
     background: var(--primary-light);

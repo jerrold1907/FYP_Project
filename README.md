@@ -64,7 +64,8 @@ using deterministic template responses instead of LLM-phrased ones.
 | **Backtest** | `/backtest` | Run a walk-forward backtest over a chosen date range and see strategy vs buy-and-hold equity curves |
 
 A chat widget is available on every page for follow-up questions
-("Why is NVDA suitable?", "Compare AAPL and MSFT", "Is TSLA risky?").
+("Why is NVDA suitable?", "Compare AAPL and MSFT", "Is TSLA risky?"). Every page also
+opens with a disclaimer that the system is an educational prototype, not financial advice.
 
 ### API Endpoints
 
@@ -86,7 +87,8 @@ FYP_Project/
 ├── pyproject.toml               # pytest, coverage and project metadata
 │
 ├── src/
-│   ├── stock_universe.py        # Single source of truth: 20 equities with sector metadata
+│   ├── stock_universe.py        # Single source of truth: 20 equities (+ S&P 100 list for exp07)
+│   ├── market_data.py           # Dated price snapshot shared by every experiment
 │   ├── risk_questionnaire.py    # 5-item scenario instrument → 5 risk categories
 │   ├── risk_classifier.py       # Rule-based classifier for raw profile attributes
 │   ├── features.py              # Technical indicators + forward-return target labels
@@ -102,7 +104,7 @@ FYP_Project/
 │   ├── instrument_validation.py # Cronbach's alpha and band sensitivity for the questionnaire
 │   └── llm_evaluation.py        # Measures the hallucination filter's error rate
 │
-├── templates/                   # index.html, compare.html, backtest.html, _chat_widget.html
+├── templates/                   # index.html, compare.html, backtest.html, _chat_widget.html, _disclaimer.html
 ├── static/                      # app.js, chat_widget.js, style.css
 │
 ├── models/
@@ -116,10 +118,10 @@ FYP_Project/
 │   ├── training.ipynb                   # Full ML pipeline with explanation and plots
 │   └── risk_classification_model.ipynb  # Trains the ML risk classifier
 │
-├── experiments/                 # exp01–exp05: scripts, results and CSV outputs
+├── experiments/                 # exp01–exp08: scripts, results and CSV outputs
 ├── tests/                       # unit/, properties/ (Hypothesis), integration/
 ├── docs/                        # Reports, PROJECT_EXPLANATION.md, report generators
-└── data/                        # raw/ (downloads) and processed/ (investor_profiles.csv)
+└── data/                        # raw/ (price snapshot, not committed) and processed/ (investor_profiles.csv)
 ```
 
 > **Note on the two risk models.** The running app classifies risk from the questionnaire
@@ -178,8 +180,12 @@ model, every recommendation can be traced back to a stated policy.
 
 `src/backtester.py` runs walk-forward validation: train on a rolling window, generate
 signals on the next unseen block, simulate the portfolio, then compare against buy-and-hold.
-Reported metrics include total return, benchmark return, Sharpe ratio (with a Lo-2002
-confidence interval), maximum drawdown, win rate and signal accuracy.
+A Buy signal takes a full position until the signal changes and a Hold signal a half
+position; transaction costs (0.1% each way) are charged only when a position opens or
+closes. Reported metrics include total return, benchmark return, Sharpe ratio (with a
+Lo-2002 confidence interval), maximum drawdown, win rate and signal accuracy. Each trade
+also records the chance that a random entry of the same length in the same window would
+have been profitable, so the win rate can be tested against a fair baseline rather than 50%.
 
 ### 6. Chatbot
 
@@ -282,9 +288,11 @@ jupyter notebook notebooks/training.ipynb
 
 ## Stock Universe
 
-20 equities across 10 GICS sectors, defined once in `src/stock_universe.py`. The set was
+20 equities across 9 sectors, defined once in `src/stock_universe.py`. The set was
 expanded from an original 10 large-cap technology names so that claims about generalisation
-could actually be tested across market regimes.
+could actually be tested across market regimes. The same module also lists the S&P 100,
+which `experiments/exp07_universe_scaling.py` uses to check whether the results hold at
+five times the scale; the application itself still analyses the 20 stocks below.
 
 | Sector | Tickers |
 |---|---|

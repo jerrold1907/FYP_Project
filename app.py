@@ -54,6 +54,27 @@ from src.chatbot import (
     is_ollama_available, OLLAMA_MODEL,
 )
 from src.stock_universe import STOCK_INFO, STOCK_NAMES, TICKERS, UNIVERSE, sectors
+from src.statistics_tests import sharpe_ratio_interval
+
+
+def _combined_sharpe(curve_pct):
+    """Sharpe ratio of a cumulative-return curve (in %) with a 95% interval.
+
+    Lo's (2002) standard error applies to the per-period ratio, so the interval
+    is formed on daily returns and then annualised; applying it to an already
+    annualised ratio makes the interval over ten times too narrow.
+
+    Returns:
+        An Interval, or None when the curve is too short or flat for a ratio.
+    """
+    values = 1 + np.asarray(curve_pct, dtype=float) / 100
+    if len(values) < 4:
+        return None
+    try:
+        return sharpe_ratio_interval(values[1:] / values[:-1] - 1)
+    except ValueError:
+        return None
+
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 
@@ -435,24 +456,19 @@ def api_backtest():
         else:
             overall_max_drawdown = 0
 
-        # Sharpe ratio with confidence interval from combined curve
-        overall_sharpe = _safe_float(aggregate.get("sharpe_ratio", 0))
-        n_points = len(combined_strategy)
-        # Lo (2002) standard error approximation
-        if n_points > 2 and overall_sharpe != 0:
-            se_sharpe = ((1 + 0.5 * overall_sharpe**2) / n_points) ** 0.5
-            sharpe_ci_lower = _safe_float(overall_sharpe - 1.96 * se_sharpe)
-            sharpe_ci_upper = _safe_float(overall_sharpe + 1.96 * se_sharpe)
-        else:
-            sharpe_ci_lower = overall_sharpe
-            sharpe_ci_upper = overall_sharpe
+        # Sharpe ratio of the combined curve with its 95% interval, so both
+        # describe the same equal-weighted strategy as the curve, return and
+        # drawdown shown beside them.
+        sharpe = _combined_sharpe(combined_strategy)
 
         # Enhanced aggregate with additional fields
         aggregate["total_trades"] = total_trades
         aggregate["pooled_win_rate_pct"] = _safe_float(pooled_win_rate)
         aggregate["max_drawdown_pct"] = _safe_float(overall_max_drawdown)
-        aggregate["sharpe_ci_lower"] = sharpe_ci_lower
-        aggregate["sharpe_ci_upper"] = sharpe_ci_upper
+        if sharpe is not None:
+            aggregate["sharpe_ratio"] = _safe_float(sharpe.estimate)
+        aggregate["sharpe_ci_lower"] = _safe_float(sharpe.lower) if sharpe else None
+        aggregate["sharpe_ci_upper"] = _safe_float(sharpe.upper) if sharpe else None
         aggregate["excess_return_pct"] = _safe_float(
             aggregate.get("total_return_pct", 0) - aggregate.get("benchmark_return_pct", 0)
         )

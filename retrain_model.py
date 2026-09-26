@@ -48,6 +48,7 @@ from src.evaluation import (
     scores_to_frame,
 )
 from src.features import compute_features, compute_target_labels
+from src.market_data import load_prices
 from src.stock_universe import TICKERS
 
 FEATURE_COLUMNS = ["close_price", "daily_return", "ma_5", "ma_20", "ma_50",
@@ -58,26 +59,18 @@ SEED = 42
 
 
 def load_dataset() -> pd.DataFrame:
-    """Download prices and build the pooled, date-tagged feature dataset.
+    """Load prices and build the pooled, date-tagged feature dataset.
 
-    The date column is retained because the chronological split depends on it;
-    the previous random-split pipeline discarded it.
+    Prices come from the shared snapshot (src/market_data.py), so the exported
+    model is trained on the same data the experiments evaluate. The date
+    column is retained because the chronological split depends on it; the
+    previous random-split pipeline discarded it.
     """
-    try:
-        import yfinance as yf
-    except ImportError:
-        print("Installing yfinance...")
-        os.system(f"{sys.executable} -m pip install yfinance -q")
-        import yfinance as yf
-
     frames = []
     for ticker in TICKERS:
         print(f"  {ticker:6}", end=" ")
         try:
-            df = yf.download(ticker, start="2020-01-01", end="2024-12-31",
-                             progress=False)
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.get_level_values(0)
+            df = load_prices(ticker)
             if len(df) < 200:
                 print(f"skipped ({len(df)} rows)")
                 continue

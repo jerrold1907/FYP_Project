@@ -160,6 +160,47 @@ def proportion_test(successes: int, n: int, p_null: float = 0.5,
     )
 
 
+def chance_matched_test(successes: int,
+                        probabilities: Sequence[float]) -> TestResult:
+    """Test a success count against trials with unequal chances of success.
+
+    The binomial test assumes one chance of success shared by every trial.
+    Backtest trades do not share one: a random long position held for two
+    days in a falling window is far less likely to profit than one held for
+    twenty days in a rising window. Given each trial's own chance, the number
+    of successes under the null follows a Poisson-binomial distribution with
+    mean sum(p) and variance sum(p(1 - p)); this uses its normal approximation,
+    which is accurate for the hundreds of trades the backtests produce.
+
+    Args:
+        successes: Observed number of successes.
+        probabilities: Chance of success for each trial under the null.
+
+    Returns:
+        TestResult with the z statistic and two-sided p-value.
+
+    Raises:
+        ValueError: If there are no trials, or none has a chance strictly
+            between 0 and 1 (the variance would be zero).
+    """
+    p = np.asarray(probabilities, dtype=float)
+    if len(p) == 0:
+        raise ValueError("Need at least one trial")
+    expected = p.sum()
+    variance = (p * (1 - p)).sum()
+    if variance <= 0:
+        raise ValueError("Every trial is certain; the test is undefined")
+
+    z = (successes - expected) / np.sqrt(variance)
+    return TestResult(
+        name="Chance-matched test (H0: wins occur at each trial's own chance)",
+        statistic=float(z),
+        p_value=float(2 * stats.norm.sf(abs(z))),
+        detail=(f"{successes}/{len(p)} observed = {successes / len(p):.1%}; "
+                f"expected by chance {expected:.1f} = {expected / len(p):.1%}"),
+    )
+
+
 def mcnemar_test(y_true: Sequence, pred_a: Sequence, pred_b: Sequence,
                  name_a: str = "A", name_b: str = "B",
                  exact_threshold: int = 25) -> TestResult:

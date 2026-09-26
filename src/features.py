@@ -155,12 +155,18 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
-def compute_target_labels(df: pd.DataFrame) -> pd.DataFrame:
+#: Default Buy threshold on the 30-day forward return. Chosen before training
+#: and not tuned; experiments/exp08_label_sensitivity.py tests the alternatives.
+BUY_THRESHOLD = 0.10
+
+
+def compute_target_labels(df: pd.DataFrame,
+                          buy_threshold: float = BUY_THRESHOLD) -> pd.DataFrame:
     """Compute target classification labels based on 30-day forward returns.
 
     Calculates the future 30-day return for each row and assigns a label:
-        - "Buy": future_30_day_return > 10% (strong positive expected return)
-        - "Hold": 0% <= future_30_day_return <= 10% (moderate/flat expected return)
+        - "Buy": future_30_day_return > buy_threshold (default 10%)
+        - "Hold": 0% <= future_30_day_return <= buy_threshold
         - "Avoid": future_30_day_return < 0% (negative expected return)
 
     The future_30_day_return is calculated as:
@@ -173,13 +179,22 @@ def compute_target_labels(df: pd.DataFrame) -> pd.DataFrame:
         df: A pandas DataFrame with at least a 'Close' or 'Adj Close' column.
             The DataFrame should have sufficient rows to compute forward-looking
             returns (the last 30 rows will have NaN labels and be dropped).
+        buy_threshold: Forward return above which a row is labelled Buy.
+            Must be positive, so that Hold keeps a non-empty range.
 
     Returns:
         A pandas DataFrame with columns:
             - future_30_day_return: The percentage return over the next 30 trading days
             - target: The classification label ("Buy", "Hold", or "Avoid")
         Rows with NaN values (last 30 rows with insufficient future data) are dropped.
+
+    Raises:
+        ValueError: If buy_threshold is not positive.
     """
+    if buy_threshold <= 0:
+        raise ValueError(
+            f"buy_threshold must be positive, got {buy_threshold}")
+
     # Handle MultiIndex columns (yfinance may return these)
     if isinstance(df.columns, pd.MultiIndex):
         df = df.copy()
@@ -197,14 +212,14 @@ def compute_target_labels(df: pd.DataFrame) -> pd.DataFrame:
     result["future_30_day_return"] = (close.shift(-30) - close) / close
 
     # Assign target labels based on future return thresholds:
-    # - Buy: return exceeds 10% (strong growth expected)
-    # - Hold: return between 0% and 10% inclusive (moderate/stable)
+    # - Buy: return exceeds buy_threshold (strong growth expected)
+    # - Hold: return between 0% and buy_threshold inclusive (moderate/stable)
     # - Avoid: return below 0% (decline expected)
     # We use pd.cut-style logic with np.select; conditions are mutually exclusive
     # and exhaustive for non-NaN values, so default should never be reached
     conditions = [
-        result["future_30_day_return"] > 0.10,   # Buy: > 10%
-        result["future_30_day_return"] >= 0.0,    # Hold: 0% to 10% (inclusive)
+        result["future_30_day_return"] > buy_threshold,  # Buy
+        result["future_30_day_return"] >= 0.0,    # Hold: 0% to buy_threshold
         result["future_30_day_return"] < 0.0,     # Avoid: < 0%
     ]
     labels = ["Buy", "Hold", "Avoid"]

@@ -205,3 +205,39 @@ class TestComputeTargetLabels:
         df = df.drop(columns=["Adj Close"])
         result = compute_target_labels(df)
         assert result.iloc[0]["target"] == "Buy"
+
+
+class TestBuyThreshold:
+    """The Buy threshold is a parameter so its sensitivity can be tested."""
+
+    def _steady_growth(self, daily_growth: float, n_days: int = 120) -> pd.DataFrame:
+        prices = 100 * (1 + daily_growth) ** np.arange(n_days)
+        dates = pd.date_range("2023-01-01", periods=n_days, freq="B")
+        return pd.DataFrame({"Close": prices}, index=dates)
+
+    def test_default_is_ten_percent(self):
+        # 0.4% a day compounds to about +12.7% over 30 days: Buy at +10%.
+        labels = compute_target_labels(self._steady_growth(0.004))
+        assert set(labels["target"]) == {"Buy"}
+
+    def test_raising_the_threshold_turns_buys_into_holds(self):
+        labels = compute_target_labels(self._steady_growth(0.004),
+                                       buy_threshold=0.15)
+        assert set(labels["target"]) == {"Hold"}
+
+    def test_lowering_the_threshold_turns_holds_into_buys(self):
+        # 0.2% a day is about +6.2% over 30 days: Hold at +10%, Buy at +5%.
+        df = self._steady_growth(0.002)
+        assert set(compute_target_labels(df)["target"]) == {"Hold"}
+        assert set(compute_target_labels(df, buy_threshold=0.05)["target"]) == {"Buy"}
+
+    def test_avoid_boundary_does_not_move(self):
+        labels = compute_target_labels(self._steady_growth(-0.001),
+                                       buy_threshold=0.05)
+        assert set(labels["target"]) == {"Avoid"}
+
+    @pytest.mark.parametrize("threshold", [0.0, -0.05])
+    def test_non_positive_threshold_rejected(self, threshold):
+        with pytest.raises(ValueError, match="buy_threshold"):
+            compute_target_labels(self._steady_growth(0.004),
+                                  buy_threshold=threshold)

@@ -296,3 +296,33 @@ class TestIntervalHelpers:
         assert interval.width == pytest.approx(0.2)
         text = str(interval)
         assert "95% CI" in text and "n=100" in text
+
+
+class TestChanceMatchedTest:
+    """Win counts judged against each trial's own chance of success."""
+
+    def test_equal_chances_reduce_to_the_binomial_normal_approximation(self):
+        from src.statistics_tests import chance_matched_test
+        result = chance_matched_test(60, [0.5] * 100)
+        assert result.statistic == pytest.approx(2.0)      # (60 - 50) / 5
+        assert result.p_value == pytest.approx(0.0455, abs=1e-4)
+
+    def test_observing_the_expected_count_is_not_significant(self):
+        from src.statistics_tests import chance_matched_test
+        chances = [0.2, 0.4, 0.6, 0.8] * 25                # expects 50 wins
+        result = chance_matched_test(50, chances)
+        assert result.statistic == pytest.approx(0.0)
+        assert not result.significant()
+
+    def test_a_high_bar_makes_the_same_count_look_worse(self):
+        from src.statistics_tests import chance_matched_test
+        low = chance_matched_test(60, [0.45] * 100)
+        high = chance_matched_test(60, [0.60] * 100)
+        assert low.statistic > 0 and high.statistic == pytest.approx(0.0)
+
+    def test_needs_uncertain_trials(self):
+        from src.statistics_tests import chance_matched_test
+        with pytest.raises(ValueError):
+            chance_matched_test(0, [])
+        with pytest.raises(ValueError):
+            chance_matched_test(2, [0.0, 1.0, 1.0])

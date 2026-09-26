@@ -143,3 +143,31 @@ class TestTickerMatching:
     def test_ticker_adjacent_to_punctuation_is_matched(self):
         _, found = classify_intent("Is XOM, or CAT, a better buy?")
         assert set(found) == {"XOM", "CAT"}
+
+
+class TestExtendedUniverse:
+    """The S&P 100 list used by the universe-scaling experiment."""
+
+    def test_holds_one_hundred_distinct_companies(self):
+        from src.stock_universe import SP100, SP100_TICKERS
+        assert len(SP100) == 100
+        assert len(set(SP100_TICKERS)) == 100
+
+    def test_contains_every_core_stock(self):
+        from src.stock_universe import SP100_TICKERS
+        assert set(TICKERS) <= set(SP100_TICKERS)
+
+    def test_one_share_class_per_company(self):
+        from src.stock_universe import SP100_TICKERS
+        assert "GOOGL" in SP100_TICKERS and "GOOG" not in SP100_TICKERS
+
+    def test_every_entry_has_a_name_and_gics_sector(self):
+        from src.stock_universe import SP100
+        gics = {"Information Technology", "Health Care", "Financials",
+                "Industrials", "Consumer Discretionary",
+                "Communication Services", "Consumer Staples", "Energy",
+                "Utilities", "Real Estate", "Materials"}
+        for ticker, name, sector in SP100:
+            assert ticker and name
+            assert sector in gics, f"{ticker}: {sector}"
+        assert {sector for _, _, sector in SP100} == gics
