@@ -216,13 +216,21 @@ three-class target is not interpretable on its own.
 
 ## Experiments
 
-| Experiment | Question it answers |
-|---|---|
-| `exp01_leakage_diagnostic.py` | How much does the random split inflate the score? (random vs chronological vs purged) |
-| `exp02` *(results only)* | Model comparison under the purged chronological split |
-| `exp03_statistical_analysis.py` | Are the model and strategy results distinguishable from chance? |
-| `exp04_model_justification.py` | Is Random Forest the right choice for time-series data? Includes stationarity tests and the LSTM baseline |
-| `exp05_instrument_and_llm.py` | Is the questionnaire psychometrically sound, and how reliable is the hallucination filter? |
+Every script reads prices through the dated snapshot in `src/market_data.py`. The snapshot
+is written on the first run and not committed, so reruns on one machine agree exactly, while a
+fresh download may shift some figures slightly. The last column gives the report section each
+script supports.
+
+| Script | Question it answers | Report |
+|---|---|---|
+| `exp01_leakage_diagnostic.py` | How much does a random split inflate the score? (random vs chronological vs purged) | 5.1 |
+| `exp03_statistical_analysis.py` | Are the model and strategy results distinguishable from chance? Intervals, McNemar, per-ticker Sharpe intervals, chance-matched win rate, market regimes | 5.4, 5.5, App. B |
+| `exp04_model_justification.py` | Which model should be deployed? Stationarity tests, LSTM baseline, per-class recall, seed stability | 5.2, 5.3 |
+| `exp05_instrument_and_llm.py` | Is the questionnaire reliable on simulated responses, and how accurate is the hallucination filter? | 5.7, App. E |
+| `exp06_real_respondent_reliability.py` | Is the questionnaire reliable on the usability participants' answers? | 5.7, App. D |
+| `exp07_universe_scaling.py` | Do the core results hold on the S&P 100? | 5.6 |
+| `exp08_label_sensitivity.py` | Do the results depend on the +10% Buy threshold? | App. H |
+| `retrain_model.py` (repo root) | Exports the production Logistic Regression model | 4.3 |
 
 Run any of them directly, e.g.:
 
@@ -236,7 +244,7 @@ Results (`*_results.txt`) and data (`*.csv`) are git-ignored and regenerate on e
 
 ## Testing
 
-304 tests across three suites:
+353 tests across three suites:
 
 ```bash
 pytest tests/ -v
@@ -244,8 +252,8 @@ pytest tests/ -v
 
 | Suite | Tests | Focus |
 |---|---|---|
-| `tests/unit/` | 252 | Specific examples and edge cases, module by module |
-| `tests/integration/` | 38 | End-to-end flows, model export, component wiring |
+| `tests/unit/` | 293 | Specific examples and edge cases, module by module |
+| `tests/integration/` | 46 | End-to-end flows, model export, component wiring |
 | `tests/properties/` | 14 | Hypothesis property-based tests — invariants that must hold for all valid inputs |
 
 Run one suite, or select by marker (`unit`, `property`, `integration`):
