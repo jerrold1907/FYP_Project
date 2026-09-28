@@ -22,7 +22,6 @@ env/
 .ipynb_checkpoints/
 
 # AI assistant / agent tool configs
-.kiro/
 .claude/
 
 # Hypothesis testing database

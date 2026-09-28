@@ -333,7 +333,7 @@ five times the scale; the application itself still analyses the 20 stocks below.
 ## Further Reading
 
 - [`docs/PROJECT_EXPLANATION.md`](docs/PROJECT_EXPLANATION.md) — component-by-component walkthrough of the whole system
-- [`.kiro/specs/ai-stock-recommendation/`](.kiro/specs/ai-stock-recommendation/) — requirements, design and task breakdown
+- [`docs/specs/`](docs/specs/) — requirements, design and task breakdown
 
 ---
 
